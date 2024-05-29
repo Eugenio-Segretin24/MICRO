@@ -1,18 +1,13 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2024 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
+* TRABAJO PRACTICO 3
+  * ALUMNOS: SEGRETIN, EUGENIO ADRIAN - MU:00884
+  *          CARRIZO, MILAGROS MARIA BELEN - MU:00901
+  * CONSIGNA: DEBOUNCE
+  *Implemente un sistema utilizando máquinas de estados con debounce para 2 teclas, y
+  *enviar por la UART cada vez que una tecla se presiona o se suelta. A su vez, cuando
+  *una tecla se presiona, se enciende un led correspondiente.
   ******************************************************************************
   */
 /* USER CODE END Header */
