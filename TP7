@@ -1,0 +1,312 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * TRABAJO PRACTICO 7
+  * ALUMNOS: SEGRETIN, EUGENIO ADRIAN - MU:00884
+  *          CARRIZO, MILAGROS MARIA BELEN - MU:00901
+  * CONSIGNA: PWM
+  *Diseñar e implementar un controlador de velocidad para un motor DC, con la capacidad 
+  *de ser controlado desde una computadora personal (PC).
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
+#include <string.h>
+
+/* Secuencia de pasos para el motor 28BYJ-48 */
+const uint8_t secuencia_pasos[8][4] = {
+    {1, 0, 0, 0},
+    {1, 1, 0, 0},
+    {0, 1, 0, 0},
+    {0, 1, 1, 0},
+    {0, 0, 1, 0},
+    {0, 0, 1, 1},
+    {0, 0, 0, 1},
+    {1, 0, 0, 1}
+};
+
+uint8_t paso_actual = 0; // Paso actual de la secuencia
+uint8_t dato_recibido; // Dato recibido por UART
+uint8_t velocidad = 0; // Velocidad del motor (0-100%)
+
+/* Definición de comandos */
+typedef enum {
+    COMANDO_INCREMENTAR_10 = 0x01,
+    COMANDO_INCREMENTAR_20,
+    COMANDO_INCREMENTAR_30,
+    COMANDO_INCREMENTAR_40,
+    COMANDO_INCREMENTAR_50,
+    COMANDO_DECREMENTAR_10,
+    COMANDO_DECREMENTAR_20,
+    COMANDO_DECREMENTAR_30,
+    COMANDO_DECREMENTAR_40,
+    COMANDO_DECREMENTAR_50,
+    COMANDO_DETENER
+} com_t;
+/* Función para configurar la secuencia de pasos */
+void configurar_paso(uint8_t paso) {
+    // Configura los pines GPIOA según la secuencia de pasos
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, secuencia_pasos[paso][0]);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, secuencia_pasos[paso][1]);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, secuencia_pasos[paso][2]);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, secuencia_pasos[paso][3]);
+}
+
+/* Función para procesar comandos recibidos por UART */
+void comandos_uart(com_t comando) {
+    switch (comando) {
+        case COMANDO_INCREMENTAR_10:
+            if (velocidad + 10 > 100) velocidad = 100;
+            else velocidad += 10;
+            break;
+        case COMANDO_INCREMENTAR_20:
+            if (velocidad + 20 > 100) velocidad = 100;
+            else velocidad += 20;
+            break;
+        case COMANDO_INCREMENTAR_30:
+            if (velocidad + 30 > 100) velocidad = 100;
+            else velocidad += 30;
+            break;
+        case COMANDO_INCREMENTAR_40:
+            if (velocidad + 40 > 100) velocidad = 100;
+            else velocidad += 40;
+            break;
+        case COMANDO_INCREMENTAR_50:
+            if (velocidad + 50 > 100) velocidad = 100;
+            else velocidad += 50;
+            break;
+        case COMANDO_DECREMENTAR_10:
+            if (velocidad < 10) velocidad = 0;
+            else velocidad -= 10;
+            break;
+        case COMANDO_DECREMENTAR_20:
+            if (velocidad < 20) velocidad = 0;
+            else velocidad -= 20;
+            break;
+        case COMANDO_DECREMENTAR_30:
+            if (velocidad < 30) velocidad = 0;
+            else velocidad -= 30;
+            break;
+        case COMANDO_DECREMENTAR_40:
+            if (velocidad < 40) velocidad = 0;
+            else velocidad -= 40;
+            break;
+        case COMANDO_DECREMENTAR_50:
+            if (velocidad < 50) velocidad = 0;
+            else velocidad -= 50;
+            break;
+        case COMANDO_DETENER:
+            velocidad = 0;
+            break;
+        default:
+            break;
+    }
+}
+
+/* Función de retardo basada en la velocidad */
+void delay_velocidad() {
+    if (velocidad > 0) {
+        // Ajustar el retardo basado en la velocidad
+        HAL_Delay(1000 / velocidad);
+    }
+}
+
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+UART_HandleTypeDef huart2;
+
+/* USER CODE BEGIN PV */
+
+/* USER CODE END PV */
+
+/* Private function prototypes -----------------------------------------------*/
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_USART2_UART_Init(void);
+
+int main(void)
+{
+
+  HAL_Init();
+  SystemClock_Config();
+
+  MX_GPIO_Init();
+  MX_USART2_UART_Init();
+  /* USER CODE BEGIN 2 */
+  // Habilitar recepción UART en modo interrupción
+     HAL_UART_Receive_IT(&huart2, &dato_recibido, 1);
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  while (1)
+  {
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
+      if (velocidad > 0)
+      {
+          // Avanzar al siguiente paso
+          paso_actual = (paso_actual + 1) % 8;
+          // Configurar el paso
+          configurar_paso(paso_actual);
+          // Retardo basado en la velocidad
+          delay_velocidad();
+      }
+      else {
+          // Detener el motor
+          HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+          HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
+          HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, GPIO_PIN_RESET);
+          HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+      }
+
+  }
+  /* USER CODE END 3 */
+}
+
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+	}
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+/* Callback de recepción de UART */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+    // Convertir el byte recibido en un comando
+	com_t comando = (com_t)dato_recibido;
+    // Procesar el comando
+	comandos_uart(comando);
+    // Volver a habilitar la recepción por interrupción
+    HAL_UART_Receive_IT(&huart2, &dato_recibido, 1);
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 9600;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+/* USER CODE BEGIN MX_GPIO_Init_1 */
+/* USER CODE END MX_GPIO_Init_1 */
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, IN1_Pin|IN2_Pin|IN3_Pin|IN4_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : IN1_Pin IN2_Pin IN3_Pin IN4_Pin */
+  GPIO_InitStruct.Pin = IN1_Pin|IN2_Pin|IN3_Pin|IN4_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+/* USER CODE BEGIN MX_GPIO_Init_2 */
+/* USER CODE END MX_GPIO_Init_2 */
+}
+
+/* USER CODE BEGIN 4 */
+
+/* USER CODE END 4 */
+
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+void Error_Handler(void)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1)
+  {
+  }
+  /* USER CODE END Error_Handler_Debug */
+}
+
+#ifdef  USE_FULL_ASSERT
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+void assert_failed(uint8_t *file, uint32_t line)
+{
+  /* USER CODE BEGIN 6 */
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* USER CODE END 6 */
+}
+#endif /* USE_FULL_ASSERT */
